@@ -1,0 +1,139 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>ChemViz Lab</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef3f1;--card:#fff;--tx:#14262b;--mut:#587077;--ac:#0b7a75;--hot:#d9480f;--ok:#2b8a3e;--bd:#cfdcd9;--grid:#dfe9e6;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1a1c;--card:#16272a;--tx:#e6f1ef;--mut:#8fb0ab;--ac:#3fc9bf;--hot:#ff8a4c;--ok:#69db7c;--bd:#274247;--grid:#1a2d30;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0e1a1c;--card:#16272a;--tx:#e6f1ef;--mut:#8fb0ab;--ac:#3fc9bf;--hot:#ff8a4c;--ok:#69db7c;--bd:#274247;--grid:#1a2d30;color-scheme:dark}
+*{box-sizing:border-box}html{height:100%}
+body{margin:0;font:16px/1.5 'Bricolage Grotesque',system-ui,sans-serif;color:var(--tx);background:var(--bg);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:28px 28px}
+.wrap{max-width:980px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:2rem;margin:.2em 0 0;font-weight:800;letter-spacing:-.02em}.sub{color:var(--mut);margin:0 0 14px}
+nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+nav button{font:inherit;font-weight:600;padding:9px 16px;border:2px solid var(--ac);background:transparent;color:var(--ac);border-radius:999px;cursor:pointer}
+nav button.on{background:var(--ac);color:var(--card)}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--hot);outline-offset:2px}
+section{display:none;background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px}section.on{display:block}
+.row{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}.col{flex:1 1 380px;min-width:0}
+select,input[type=number]{font:inherit;padding:7px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--card);color:var(--tx);max-width:100%}
+input[type=number]{width:90px}input[type=range]{width:100%;accent-color:var(--ac)}
+canvas{width:100%;height:auto;border:1px solid var(--bd);border-radius:10px;cursor:grab;display:block}
+.hint{font-size:.85rem;color:var(--mut);margin:4px 0 10px}
+.ro{font-weight:600;margin:8px 0;min-height:3em}.ro b{color:var(--hot)}
+.sol{border-left:4px solid var(--ac);padding:2px 12px;margin:10px 0;font-size:.95rem}.sol p{margin:6px 0}
+.eq{font-size:1.1rem;font-weight:600;margin:8px 0}
+.bar{height:22px;background:var(--grid);border-radius:6px;display:flex;overflow:hidden;margin:3px 0 10px}
+.u{background:var(--ac)}.l{background:repeating-linear-gradient(45deg,var(--bd),var(--bd) 4px,transparent 4px,transparent 8px)}.act{background:var(--ok)}.th{background:var(--hot)}
+.lim{color:var(--hot);font-weight:800}.warn{color:var(--hot);font-weight:600}
+label{font-size:.9rem;color:var(--mut)}.f{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:6px 0}
+</style></head><body><div class="wrap">
+<h1>ChemViz Lab</h1><p class="sub">Interactive companion for CW 02.03 Limiting Reactant, CW 04.03 Heat Calculations and CW 06.03 Gas Laws. Drag any box to rotate it.</p>
+<nav><button data-t="heat" class="on">Heat and phase change</button><button data-t="lim">Limiting reactant</button><button data-t="gas">Gas laws</button></nav>
+
+<section id="heat" class="on"><div class="f"><label for="hs">Exercise</label><select id="hs"></select></div>
+<div class="row"><div class="col"><canvas id="hc" width="560" height="360" aria-label="3D particle box"></canvas><p class="hint">Drag to rotate. Blue particles are liquid, orange are gas.</p></div>
+<div class="col"><canvas id="hg" width="560" height="260" aria-label="Heating curve"></canvas>
+<label for="hq">Heat added</label><input type="range" id="hq" min="0" value="0"><div class="ro" id="hro"></div></div></div>
+<label><input type="checkbox" id="hshow"> Show worked solution</label><div id="hsol" class="sol" hidden></div></section>
+
+<section id="lim"><div class="f"><label for="ls">Exercise</label><select id="ls"></select></div>
+<div class="eq" id="leq"></div><div class="f" id="lin"></div>
+<p class="hint">Change a mass to explore a new version of the problem. Each bar shows how many “reaction units” a reactant can supply; the shortest bar limits the reaction.</p>
+<div id="lbars"></div><label><input type="checkbox" id="lshow"> Show worked solution</label><div id="lsol" class="sol" hidden></div></section>
+
+<section id="gas"><div class="f"><label for="gs">Problem</label><select id="gs"></select></div>
+<div class="row"><div class="col"><canvas id="gc" width="560" height="360" aria-label="3D gas box"></canvas><p class="hint">Particle count follows moles, speed follows temperature, box height follows volume.</p></div>
+<div class="col"><div id="gx"><label for="gp">Pressure <span id="gpv"></span></label><input type="range" id="gp" min="0.2" max="3" step="0.05" value="1">
+<label for="gt">Temperature <span id="gtv"></span></label><input type="range" id="gt" min="-50" max="400" step="5" value="25">
+<label for="gn">Moles <span id="gnv"></span></label><input type="range" id="gn" min="0.1" max="2" step="0.05" value="0.5"></div>
+<div class="ro" id="gro"></div><div id="gsol" class="sol"></div></div></div></section>
+</div>
+<script>
+const R=0.08206,$=id=>document.getElementById(id),cl=(x,a,b)=>Math.max(a,Math.min(b,x)),rn=()=>Math.random()-.5;
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+function Box(cv,k){const c=cv.getContext('2d'),W=cv.width,H=cv.height;let ay=.7,ax=.4,dr=null,P=[];
+cv.style.touchAction='none';cv.onpointerdown=e=>{dr=[e.clientX,e.clientY];cv.setPointerCapture(e.pointerId)};
+cv.onpointermove=e=>{if(dr){ay+=(e.clientX-dr[0])*.01;ax=cl(ax+(e.clientY-dr[1])*.01,-1.2,1.2);dr=[e.clientX,e.clientY]}};cv.onpointerup=()=>dr=null;
+const pr=(x,y,z)=>{const x1=x*Math.cos(ay)+z*Math.sin(ay),z1=-x*Math.sin(ay)+z*Math.cos(ay),y2=y*Math.cos(ax)-z1*Math.sin(ax),z2=y*Math.sin(ax)+z1*Math.cos(ax),f=3/(3+z2);return[W/2+x1*f*115,H/2+60-y2*f*115-60*0,f,z2]};
+const api={k,N(n){while(P.length<n)P.push({x:rn()*2,y:rn()*2,z:rn()*2,vx:rn(),vy:rn(),vz:rn()});P.length=n}};
+(function loop(){c.clearRect(0,0,W,H);const n=P.length,bt=k.bt();
+P.forEach((p,i)=>{const t=k.top(i,n),s=k.sp(i,n)*.04;p.x+=p.vx*s;p.y+=p.vy*s;p.z+=p.vz*s;
+if(Math.abs(p.x)>1){p.vx*=-1;p.x=cl(p.x,-1,1)}if(Math.abs(p.z)>1){p.vz*=-1;p.z=cl(p.z,-1,1)}if(p.y>t||p.y<-1){p.vy*=-1;p.y=cl(p.y,-1,t)}});
+c.strokeStyle=css('--mut');c.lineWidth=1;const C=[];for(const x of[-1,1])for(const y of[-1,bt])for(const z of[-1,1])C.push(pr(x,y,z));
+[[0,1],[2,3],[4,5],[6,7],[0,2],[1,3],[4,6],[5,7],[0,4],[1,5],[2,6],[3,7]].forEach(([a,b])=>{c.beginPath();c.moveTo(C[a][0],C[a][1]);c.lineTo(C[b][0],C[b][1]);c.stroke()});
+P.map((p,i)=>({q:pr(p.x,p.y,p.z),i})).sort((a,b)=>b.q[3]-a.q[3]).forEach(({q,i})=>{const r=7*q[2];c.fillStyle=k.col(i,n);c.beginPath();c.arc(q[0],q[1],r,0,7);c.fill();c.fillStyle='rgba(255,255,255,.55)';c.beginPath();c.arc(q[0]-r*.3,q[1]-r*.3,r*.3,0,7);c.fill()});
+requestAnimationFrame(loop)})();return api}
+
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button,section').forEach(e=>e.classList.remove('on'));b.classList.add('on');$(b.dataset.t).classList.add('on')});
+const f1=(x,d=2)=>(+x).toFixed(d);
+
+/* ---------- HEAT ---------- */
+const HD=[{n:'Ex 1 · Ethanol, 25.0 g',M:46.07,m:25,T0:20,Tb:78.4,Tf:120,cl:2.44,cg:1.43,dH:38.6},
+{n:'Ex 2 · Nitrogen, 18.0 g',M:28.01,m:18,T0:-210,Tb:-195.8,Tf:-150,cl:2.04,cg:1.04,dH:5.56},
+{n:'Ex 3 · Liquid oxygen, unknown mass',M:32.00,q1:1980,q2:12500,T0:-210,Tb:-183,cl:0.92,dH:6.82},
+{n:'Ex 4 · Acetone, unknown mass',M:58.08,q1:1680,q2:22000,T0:40,Tb:56,cl:2.15,dH:29.1}];
+function hCalc(s){const o={...s};if(s.q1){o.m=s.q1/(s.cl*(s.Tb-s.T0));o.Q1=s.q1;o.Q2=s.q2;o.vap=Math.min(o.m,s.q2/(s.dH*1000)*s.M);o.Q3=0}else{o.Q1=s.m*s.cl*(s.Tb-s.T0);o.Q2=s.m/s.M*s.dH*1000;o.vap=o.m;o.Q3=s.m*s.cg*(s.Tf-s.Tb)}o.tot=o.Q1+o.Q2+o.Q3;return o}
+let hs=hCalc(HD[0]),hf=0,hT=20;
+HD.forEach((s,i)=>$('hs').add(new Option(s.n,i)));
+const hb=Box($('hc'),{bt:()=>1,top:(i,n)=>i<n*hf?1:-.4,sp:(i,n)=>(i<n*hf?2.6:.9)*Math.sqrt((hT+273.15)/300),col:(i,n)=>i<n*hf?css('--hot'):css('--ac')});hb.N(60);
+const hTemp=q=>q<=hs.Q1?hs.T0+q/(hs.m*hs.cl):q<=hs.Q1+hs.Q2?hs.Tb:hs.Tb+(q-hs.Q1-hs.Q2)/(hs.m*hs.cg);
+function hUpdate(){const q=+$('hq').value;hT=hTemp(q);hf=hs.vap/hs.m*cl((q-hs.Q1)/hs.Q2,0,1);
+const st=q<hs.Q1?'Heating the liquid':q<hs.Q1+hs.Q2?'Boiling: temperature stays constant':q<hs.tot||hs.q1?(hs.q1?'Venting vapor':'Heating the gas'):'Heating the gas';
+$('hro').innerHTML=`<b>${f1(hT,1)} °C</b> · ${st}<br>Heat added: ${f1(q/1000)} kJ · ${f1(hf*100,0)}% of the sample is gas`;
+const g=$('hg'),c=g.getContext('2d'),W=g.width,H=g.height,px=x=>40+x/hs.tot*(W-60),mn=Math.min(hs.T0,hs.Tb),mx=hs.Tf||hs.Tb+(hs.Tb-hs.T0)*.3,py=t=>H-30-(t-mn)/(mx-mn)*(H-50);
+c.clearRect(0,0,W,H);c.strokeStyle=css('--mut');c.fillStyle=css('--mut');c.font='13px sans-serif';c.beginPath();c.moveTo(40,10);c.lineTo(40,H-30);c.lineTo(W-10,H-30);c.stroke();
+c.fillText('°C',6,16);c.fillText('heat added →',W-100,H-10);c.fillText(f1(mx,0),6,py(mx)+4);c.fillText(f1(mn,0),6,py(mn)+4);
+c.strokeStyle=css('--ac');c.lineWidth=3;c.beginPath();[[0,hs.T0],[hs.Q1,hs.Tb],[hs.Q1+hs.Q2,hs.Tb],[hs.tot,hs.Tf||hs.Tb]].forEach(([x,t],i)=>i?c.lineTo(px(x),py(t)):c.moveTo(px(x),py(t)));c.stroke();c.lineWidth=1;
+c.fillStyle=css('--hot');c.beginPath();c.arc(px(q),py(hT),7,0,7);c.fill();hSol()}
+function hSol(){const s=hs,k=x=>f1(x/1000),n=s.m/s.M;let h='';
+if(s.q1){h=`<p>Stage 1: q = m·c·ΔT, so m = q / (c·ΔT) = ${s.q1} J / (${s.cl} J/g·°C × ${f1(s.Tb-s.T0,1)} °C) = <b>${f1(s.m)} g</b></p>
+<p>Stage 2: n = q / ΔHvap = ${k(s.q2)} kJ / ${s.dH} kJ/mol = ${f1(s.q2/(s.dH*1000),4)} mol; mass lost = n × ${s.M} g/mol = <b>${f1(s.vap)} g</b></p>
+<p>Remaining = ${f1(s.m)} g − ${f1(s.vap)} g = <b>${f1(s.m-s.vap)} g</b></p>`}
+else h=`<p>a. q = m·c·ΔT = ${s.m} g × ${s.cl} J/g·°C × ${f1(s.Tb-s.T0,1)} °C = <b>${f1(s.Q1,0)} J</b></p>
+<p>b. n = ${s.m} g / ${s.M} g/mol = ${f1(n,4)} mol; q = n·ΔHvap = ${f1(n,4)} mol × ${s.dH} kJ/mol = <b>${k(s.Q2)} kJ</b></p>
+<p>c. q = ${s.m} g × ${s.cg} J/g·°C × ${f1(s.Tf-s.Tb,1)} °C = <b>${f1(s.Q3,0)} J</b></p>
+<p>d. q total = ${k(s.Q1)} + ${k(s.Q2)} + ${k(s.Q3)} = <b>${k(s.tot)} kJ</b></p>`;$('hsol').innerHTML=h}
+function hPick(){hs=hCalc(HD[$('hs').value]);$('hq').max=hs.tot;$('hq').step=hs.tot/400;$('hq').value=0;hUpdate()}
+$('hs').onchange=hPick;$('hq').oninput=hUpdate;$('hshow').onchange=e=>$('hsol').hidden=!e.target.checked;hPick();
+
+/* ---------- LIMITING ---------- */
+const L=[{n:'Ex 1 · Pb(NO₃)₂ + NaI',eq:'Pb(NO₃)₂ + 2 NaI → PbI₂ + 2 NaNO₃',r:[{f:'Pb(NO₃)₂',M:331.2,c:1,g:25},{f:'NaI',M:149.89,c:2,g:15}],p:{f:'NaNO₃',M:84.99,c:2},act:18.6},
+{n:'Ex 2 · Ba₃(PO₄)₂ + NaCl',eq:'Ba₃(PO₄)₂ + 6 NaCl → 3 BaCl₂ + 2 Na₃PO₄',r:[{f:'NaCl',M:58.44,c:6,g:1.64},{f:'Ba₃(PO₄)₂',M:601.93,c:1,g:2.34}],p:{f:'BaCl₂',M:208.23,c:3},act:1.35},
+{n:'Ex 3 · Heptane + O₂',eq:'C₇H₁₆ + 11 O₂ → 7 CO₂ + 8 H₂O',r:[{f:'C₇H₁₆',M:100.21,c:1,g:4.26},{f:'O₂',M:32,c:11,g:7.85}],p:{f:'CO₂',M:44.01,c:7},act:5.4},
+{n:'Ex 4 · (NH₄)₂SO₄ + Ca(OH)₂',eq:'(NH₄)₂SO₄ + Ca(OH)₂ → CaSO₄ + 2 NH₃ + 2 H₂O',r:[{f:'(NH₄)₂SO₄',M:132.14,c:1,g:6.2},{f:'Ca(OH)₂',M:74.09,c:1,g:4.8}],p:{f:'CaSO₄',M:136.14,c:1},act:2.15},
+{n:'Gas Ex 9 · NH₄Cl + NaOH',eq:'NH₄Cl + NaOH → NH₃ + NaCl + H₂O',r:[{f:'NH₄Cl',M:53.49,c:1,g:3.5},{f:'NaOH',M:40,c:1,g:2.8}],p:{f:'NH₃',M:17.03,c:1},gas:{V:.865,T:27.5,P:745}},
+{n:'Gas Ex 10 · Na₂CO₃ + HCl',eq:'Na₂CO₃ + 2 HCl → 2 NaCl + H₂O + CO₂',r:[{f:'Na₂CO₃',M:105.99,c:1,g:4.25},{f:'HCl',M:36.46,c:2,g:6.8}],p:{f:'CO₂',M:44.01,c:1},gas:{V:.945,T:30,P:740}},
+{n:'Gas Ex 11 · Fe₂S₃ + HCl',eq:'2 Fe₂S₃ + 12 HCl → 4 FeCl₃ + 6 H₂S',r:[{f:'Fe₂S₃',M:207.9,c:2,g:3.05},{f:'HCl',M:36.46,c:12,g:3.1}],p:{f:'H₂S',M:34.08,c:6},gas:{V:.78,T:29,P:742}}];
+let lp=L[0];L.forEach((s,i)=>$('ls').add(new Option(s.n,i)));
+function lBuild(){lp=L[$('ls').value];$('leq').textContent=lp.eq;$('lin').innerHTML=lp.r.map((x,j)=>`<label>${x.f} (g) <input type="number" step="any" min="0" data-j="${j}" value="${x.g}"></label>`).join('')+(lp.gas?'':`<label>Actual ${lp.p.f} (g) <input type="number" step="any" min="0" id="lact" value="${lp.act}"></label>`);
+document.querySelectorAll('#lin input').forEach(i=>i.oninput=()=>{if(i.id)lp.act=+i.value;else lp.r[i.dataset.j].g=+i.value;lOut()});lOut()}
+function lOut(){const rows=lp.r.map(x=>({...x,mol:x.g/x.M,u:x.g/x.M/x.c})),lim=rows.reduce((a,b)=>b.u<a.u?b:a),mu=Math.max(...rows.map(x=>x.u)),p=lp.p,th=lim.u*p.c*p.M;
+let act=lp.act,gs='';if(lp.gas){const G=lp.gas,T=G.T+273.15,n=G.P/760*G.V/(R*T);act=n*p.M;gs=`<p>Actual yield from the gas: P = ${G.P} mmHg / 760 = ${f1(G.P/760,4)} atm, T = ${G.T} + 273.15 = ${f1(T,2)} K; n = PV/RT = (${f1(G.P/760,4)} × ${G.V}) / (${R} × ${f1(T,2)}) = ${f1(n,5)} mol; mass = ${f1(n,5)} × ${p.M} = <b>${f1(act,3)} g</b></p>`}
+const pct=act/th*100,mg=Math.max(th,act);
+$('lbars').innerHTML=rows.map(x=>`<div class="${x===lim?'lim':''}">${x.f}${x===lim?' (limiting)':''}: ${f1(x.mol,4)} mol → ${f1(x.u,4)} reaction units</div><div class="bar"><div class="u" style="width:${lim.u/mu*100}%"></div><div class="l" style="width:${(x.u-lim.u)/mu*100}%"></div></div>`).join('')
++`<div>Theoretical ${p.f}: ${f1(th,3)} g</div><div class="bar"><div class="th" style="width:${th/mg*100}%"></div></div><div>Actual ${p.f}: ${f1(act,3)} g · <b>${f1(pct,1)}% yield</b></div><div class="bar"><div class="act" style="width:${act/mg*100}%"></div></div>`+(pct>100?`<p class="warn">The actual yield is larger than the theoretical yield, which is impossible. Check the data: ${lim.f} limits the reaction, so no more than ${f1(th,2)} g of ${p.f} can form.</p>`:'');
+$('lsol').innerHTML=gs+rows.map(x=>`<p>${x.f}: ${x.g} g / ${x.M} g/mol = ${f1(x.mol,4)} mol ÷ ${x.c} = ${f1(x.u,4)}</p>`).join('')+`<p>Limiting reactant: <b>${lim.f}</b> (smallest mol ÷ coefficient)</p><p>Theoretical yield = ${f1(lim.u,4)} × ${p.c} × ${p.M} g/mol = <b>${f1(th,3)} g ${p.f}</b></p>`
++rows.filter(x=>x!==lim).map(x=>`<p>Excess ${x.f} left = ${x.g} − (${f1(lim.u,4)} × ${x.c} × ${x.M}) = <b>${f1(x.g-lim.u*x.c*x.M,3)} g</b></p>`).join('')+`<p>Percent yield = ${f1(act,3)} / ${f1(th,3)} × 100 = <b>${f1(pct,1)}%</b></p>`}
+$('ls').onchange=lBuild;$('lshow').onchange=e=>$('lsol').hidden=!e.target.checked;$('lsol').hidden=true;lBuild();
+
+/* ---------- GAS ---------- */
+const S=(t,x)=>`<p>${t}${x?' <b>'+x+'</b>':''}</p>`,K=c=>c+273.15;
+const GP=[{n:'Explore PV = nRT (CO₂)',x:1},
+{n:'Ex 1 · NO₂ density → pressure',f(){const M=46.01,D=2.05,T=K(46),P=D*R*T/M;return{P,T,n:D/M,V:1,s:S(`T = 46 + 273.15 = ${f1(T)} K`)+S(`P = DRT/M = (${D} × ${R} × ${f1(T)}) / ${M} =`,f1(P,3)+' atm')}}},
+{n:'Ex 2 · N₂O₄ density → temperature',f(){const M=92.02,D=3.55,P=.925,T=M*P/(D*R);return{P,T,n:D/M,V:1,s:S(`T = MP/(DR) = (${M} × ${P}) / (${D} × ${R}) = ${f1(T,1)} K`)+S('°C = K − 273.15 =',f1(T-273.15,1)+' °C')}}},
+{n:'Ex 3 · Density → molar mass',f(){const D=2.1,T=K(28),P=.885,M=D*R*T/P;return{P,T,n:D/M,V:1,s:S(`T = 28 + 273.15 = ${f1(T)} K`)+S(`M = DRT/P = (${D} × ${R} × ${f1(T)}) / ${P} =`,f1(M,1)+' g/mol')}}},
+{n:'Ex 4 · Ethyl chloride density → pressure',f(){const M=64.51,D=3.1,T=K(58),P=D*R*T/M;return{P,T,n:D/M,V:1,s:S(`T = 58 + 273.15 = ${f1(T)} K`)+S(`P = DRT/M = (${D} × ${R} × ${f1(T)}) / ${M} =`,f1(P,3)+' atm')}}},
+{n:'Ex 5 · NaHCO₃ → CO₂ volume',f(){const n=35/84.01,P=725/760,T=298,V=n*R*T/P;return{P,T,n,V,s:S(`n = 35.0 g / 84.01 g/mol = ${f1(n,4)} mol NaHCO₃ = ${f1(n,4)} mol CO₂ (1:1)`)+S(`P = 725 / 760 = ${f1(P,4)} atm`)+S(`V = nRT/P = (${f1(n,4)} × ${R} × 298) / ${f1(P,4)} =`,f1(V,2)+' L')}}},
+{n:'Ex 6 · CaSO₃ → SO₂ volume',f(){const n=28/120.14,P=742/760,T=305,V=n*R*T/P;return{P,T,n,V,s:S(`n = 28.0 g / 120.14 g/mol = ${f1(n,4)} mol CaSO₃ = ${f1(n,4)} mol SO₂ (1:1)`)+S(`P = 742 / 760 = ${f1(P,4)} atm`)+S(`V = nRT/P = (${f1(n,4)} × ${R} × 305) / ${f1(P,4)} =`,f1(V,2)+' L')}}},
+{n:'Ex 7 · Flotation device → CaCO₃ mass',f(){const P=.92,V=9.5,T=K(29),n=P*V/(R*T);return{P,T,n,V,s:S(`T = 29 + 273.15 = ${f1(T)} K`)+S(`n = PV/RT = (${P} × ${V}) / (${R} × ${f1(T)}) = ${f1(n,4)} mol CO₂ = ${f1(n,4)} mol CaCO₃ (1:1)`)+S(`mass = ${f1(n,4)} × 100.09 g/mol =`,f1(n*100.09,2)+' g')}}},
+{n:'Ex 8 · Oxygen candle → NaClO₃ mass',f(){const P=.885,V=14.2,T=K(41),n=P*V/(R*T),m=n*2/3*106.44;return{P,T,n,V,s:S(`T = 41 + 273.15 = ${f1(T)} K`)+S(`n(O₂) = PV/RT = (${P} × ${V}) / (${R} × ${f1(T)}) = ${f1(n,4)} mol`)+S(`n(NaClO₃) = ${f1(n,4)} × 2/3 = ${f1(n*2/3,4)} mol; mass = ${f1(n*2/3,4)} × 106.44 g/mol =`,f1(m,2)+' g')}}}];
+GP.forEach((s,i)=>$('gs').add(new Option(s.n,i)));
+let gv={n:.5,T:298,V:1};
+const gb=Box($('gc'),{bt:()=>-1+2*cl(Math.log10(gv.V+1)/1.4,.2,1),top:()=>-1+2*cl(Math.log10(gv.V+1)/1.4,.2,1),sp:()=>1.6*Math.sqrt(gv.T/300),col:()=>css('--hot')});
+function gUpdate(){const ex=GP[$('gs').value].x;$('gx').style.display=ex?'block':'none';
+if(ex){const P=+$('gp').value,t=+$('gt').value,n=+$('gn').value,T=K(t),V=n*R*T/P;$('gpv').textContent=P+' atm';$('gtv').textContent=t+' °C ('+f1(T,0)+' K)';$('gnv').textContent=n+' mol';gv={n,T,V};
+$('gro').innerHTML=`V = nRT/P = <b>${f1(V,2)} L</b> · density of CO₂ = MP/RT = <b>${f1(44.01*P/(R*T),2)} g/L</b>`;$('gsol').innerHTML='<p>Raise T or lower P and the box grows. Add moles and more particles appear.</p>'}
+else{const r=GP[$('gs').value].f();gv={n:r.n,T:r.T,V:r.V};$('gro').innerHTML=`P = <b>${f1(r.P,3)} atm</b> · T = <b>${f1(r.T,1)} K</b> · V = <b>${f1(r.V,2)} L</b>`;$('gsol').innerHTML=r.s}
+gb.N(cl(Math.round(gv.n*60),8,100))}
+['gs','gp','gt','gn'].forEach(i=>$(i).oninput=gUpdate);gUpdate();
+</script></body></html>
